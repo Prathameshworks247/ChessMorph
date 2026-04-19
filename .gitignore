@@ -1,0 +1,6 @@
+plan.md
+data/
+logs/
+results/
+*.pyc
+*/__pycache__/    
