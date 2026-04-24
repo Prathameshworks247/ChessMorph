@@ -77,7 +77,7 @@ def train(config_path: Path | None = None) -> None:
     model = GameAssetVAE(latent_dim=cfg["data"]["latent_dim"]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=tc["lr"])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=tc["scheduler_patience"], factor=0.5, verbose=True,
+        optimizer, patience=tc["scheduler_patience"], factor=0.5,
     )
 
     ckpt_dir = ml_root / cfg["paths"]["checkpoints"]
