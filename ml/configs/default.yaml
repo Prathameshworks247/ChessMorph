@@ -1,0 +1,62 @@
+paths:
+  raw_svgs: "data/raw_svgs"          # relative to ml/
+  rendered: "data/rendered"
+  dataset: "data/chess_dataset.h5"
+  checkpoints: "checkpoints"
+  exports: "exports"
+  source_svgs: "../data"             # the pre-downloaded sets at project root
+
+data:
+  image_size: 64
+  latent_dim: 16
+  padding_px: 4
+  augmentation_factor: 25
+  hdf5_compression: 4
+  piece_map:
+    wK: king
+    wQ: queen
+    wR: rook
+    wB: bishop
+    wN: knight
+    wP: pawn
+    bK: king
+    bQ: queen
+    bR: rook
+    bB: bishop
+    bN: knight
+    bP: pawn
+    # mono set (no color prefix)
+    K: king
+    Q: queen
+    R: rook
+    B: bishop
+    N: knight
+    P: pawn
+
+training:
+  batch_size: 64
+  num_workers: 4
+  val_split: 0.1
+  epochs: 100
+  lr: 0.001
+  beta_target: 4.0
+  beta_warmup_epochs: 5
+  beta_ramp_epochs: 20
+  early_stopping_patience: 15
+  scheduler_patience: 5
+  log_image_every_n_epochs: 5
+  save_checkpoint_every_n_epochs: 10
+  wandb_project: "chessmorph"
+
+augmentation:
+  rotate_limit: 15
+  rotate_p: 0.7
+  affine_scale_min: 0.85
+  affine_scale_max: 1.15
+  affine_translate_px: 4
+  affine_p: 0.7
+  elastic_alpha: 10.0
+  elastic_sigma: 3.0
+  elastic_p: 0.3
+  blur_limit: 3
+  blur_p: 0.3
