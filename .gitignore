@@ -1,6 +1,11 @@
 plan.md
-data/
+/data/
 logs/
 results/
 *.pyc
-*/__pycache__/    
+__pycache__/
+ml/data/raw_svgs/
+ml/data/rendered/
+ml/data/chess_dataset.h5
+ml/checkpoints/
+.DS_Store
