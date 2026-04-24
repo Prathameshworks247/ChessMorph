@@ -154,19 +154,24 @@ def train(config_path: Path | None = None) -> None:
                 ]
             wandb.log(log_dict)
 
-        scheduler.step(val_avg["total"])
+        scheduler.step(val_avg["recon"])
 
         # Checkpoints
         if epoch % tc["save_checkpoint_every_n_epochs"] == 0:
             save_checkpoint(model, ckpt_dir / f"epoch_{epoch}.pt", {"epoch": epoch})
 
-        if val_avg["total"] < best_val:
-            best_val = val_avg["total"]
+        # Track best using recon loss only — total loss rises when beta ramps,
+        # which would falsely trigger early stopping during the warmup phase.
+        monitor = val_avg["recon"]
+        if monitor < best_val:
+            best_val = monitor
             epochs_no_improve = 0
             save_checkpoint(model, ckpt_dir / "best.pt", {"epoch": epoch, "val_loss": best_val})
         else:
             epochs_no_improve += 1
-            if epochs_no_improve >= tc["early_stopping_patience"]:
+            # Only allow early stopping after beta has fully ramped
+            beta_fully_ramped = epoch >= tc["beta_warmup_epochs"] + tc["beta_ramp_epochs"]
+            if beta_fully_ramped and epochs_no_improve >= tc["early_stopping_patience"]:
                 log.info("Early stopping at epoch %d", epoch)
                 break
 

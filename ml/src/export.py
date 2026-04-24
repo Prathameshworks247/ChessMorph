@@ -52,15 +52,17 @@ def export_decoder(cfg: dict, ml_root: Path) -> Path:
     decoder.eval()
 
     dummy = torch.zeros(1, latent_dim)
+    # Use legacy exporter (dynamo=False) to get a self-contained ONNX file
     torch.onnx.export(
         decoder,
-        dummy,
+        (dummy,),
         str(out_path),
         input_names=["latent_vector"],
         output_names=["generated_image"],
         dynamic_axes={"latent_vector": {0: "batch"}, "generated_image": {0: "batch"}},
         opset_version=17,
         do_constant_folding=True,
+        dynamo=False,
     )
     log.info("Exported ONNX to %s", out_path)
 

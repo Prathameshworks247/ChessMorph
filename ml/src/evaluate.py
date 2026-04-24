@@ -65,16 +65,22 @@ def reconstruction_grid(
 
 def latent_traversal(
     model: GameAssetVAE,
+    dataset: ChessDataset,
     latent_dim: int = 16,
     n_steps: int = 9,
     z_range: float = 3.0,
     device: torch.device = torch.device("cpu"),
     save_path: Path | None = None,
 ) -> None:
-    """For each latent dim, vary it from -z_range to +z_range while others stay 0."""
+    """For each latent dim, vary it from -z_range to +z_range while others stay at
+    the encoded mean of a real image (avoids blank outputs when posterior ≠ prior)."""
     import matplotlib.pyplot as plt
 
-    z_base = torch.zeros(1, latent_dim, device=device)
+    # Use encoded mean of a real sample as base instead of zeros
+    sample = dataset[0].unsqueeze(0).to(device)
+    with torch.no_grad():
+        mu, _ = model.encode(sample)
+    z_base = mu.detach()
     steps = torch.linspace(-z_range, z_range, n_steps)
 
     fig, axes = plt.subplots(latent_dim, n_steps, figsize=(n_steps * 1.2, latent_dim * 1.2))
@@ -143,5 +149,5 @@ if __name__ == "__main__":
     out_dir.mkdir(exist_ok=True)
 
     reconstruction_grid(model, dataset, device=device, save_path=out_dir / "reconstruction_grid.png")
-    latent_traversal(model, cfg["data"]["latent_dim"], device=device, save_path=out_dir / "latent_traversal.png")
+    latent_traversal(model, dataset, cfg["data"]["latent_dim"], device=device, save_path=out_dir / "latent_traversal.png")
     compute_pca(model, dataset, cfg["data"]["latent_dim"], device=device, save_path=out_dir / "pca_components.npy")
