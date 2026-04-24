@@ -27,7 +27,7 @@ def decode(session: ort.InferenceSession, latent: list[float]) -> str:
     output = session.run(["generated_image"], {"latent_vector": z})[0]
     # output shape: (1, 1, 64, 64), values in [0, 1]
     img_arr = (output[0, 0] * 255).clip(0, 255).astype(np.uint8)
-    img = Image.fromarray(img_arr, mode="L")
+    img = Image.fromarray(img_arr)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode("utf-8")

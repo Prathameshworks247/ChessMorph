@@ -9,3 +9,4 @@ ml/data/rendered/
 ml/data/chess_dataset.h5
 ml/checkpoints/
 .DS_Store
+frontend/node_modules/
