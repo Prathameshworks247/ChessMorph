@@ -137,6 +137,48 @@ def compute_pca(
     return pca.components_
 
 
+def compute_presets(
+    model: GameAssetVAE,
+    dataset: ChessDataset,
+    device: torch.device = torch.device("cpu"),
+    save_path: Path | None = None,
+) -> dict[str, list[float]]:
+    """Compute canonical latent vector for each piece type (mean µ over all examples).
+
+    Saves to presets.json for the backend /presets endpoint.
+    """
+    import h5py
+    import json
+    from torch.utils.data import DataLoader
+
+    h5_path = dataset.h5_path
+    with h5py.File(h5_path, "r") as f:
+        piece_types = [p.decode() for p in f["piece_type"][:]]
+
+    loader = DataLoader(dataset, batch_size=256, shuffle=False, num_workers=0)
+    all_mus: list[np.ndarray] = []
+    with torch.no_grad():
+        for batch in loader:
+            mu, _ = model.encode(batch.to(device))
+            all_mus.append(mu.cpu().numpy())
+
+    mus = np.concatenate(all_mus, axis=0)
+
+    unique_pieces = sorted(set(piece_types))
+    presets: dict[str, list[float]] = {}
+    for piece in unique_pieces:
+        mask = np.array([p == piece for p in piece_types])
+        mean_mu = mus[mask].mean(axis=0)
+        presets[piece] = [round(float(v), 4) for v in mean_mu]
+        log.info("Preset %s: %s...", piece, mean_mu[:4].round(3))
+
+    out = save_path or Path("presets.json")
+    with open(out, "w") as f:
+        json.dump(presets, f, indent=2)
+    log.info("Saved presets to %s", out)
+    return presets
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     ml_root = Path(__file__).resolve().parents[1]
@@ -151,3 +193,4 @@ if __name__ == "__main__":
     reconstruction_grid(model, dataset, device=device, save_path=out_dir / "reconstruction_grid.png")
     latent_traversal(model, dataset, cfg["data"]["latent_dim"], device=device, save_path=out_dir / "latent_traversal.png")
     compute_pca(model, dataset, cfg["data"]["latent_dim"], device=device, save_path=out_dir / "pca_components.npy")
+    compute_presets(model, dataset, device=device, save_path=out_dir / "presets.json")

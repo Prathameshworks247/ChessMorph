@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException
@@ -13,12 +15,21 @@ from .schemas import GenerateRequest, GenerateResponse, InterpolateRequest, Inte
 
 log = logging.getLogger(__name__)
 
+_PRESETS_PATH = settings.MODEL_PATH.parent / "presets.json"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not settings.MODEL_PATH.exists():
         raise RuntimeError(f"ONNX model not found at {settings.MODEL_PATH}")
     app.state.session = load_session(settings.MODEL_PATH)
+    if _PRESETS_PATH.exists():
+        with open(_PRESETS_PATH) as f:
+            app.state.presets = json.load(f)
+        log.info("Loaded %d presets from %s", len(app.state.presets), _PRESETS_PATH)
+    else:
+        app.state.presets = {}
+        log.warning("presets.json not found at %s — run evaluate.py first", _PRESETS_PATH)
     log.info("Model loaded. Ready.")
     yield
     log.info("Shutting down.")
@@ -37,6 +48,11 @@ app.add_middleware(
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/presets")
+def get_presets() -> dict[str, list[float]]:
+    return app.state.presets
 
 
 @app.post("/generate", response_model=GenerateResponse)

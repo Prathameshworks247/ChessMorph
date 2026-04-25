@@ -1,5 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
+export async function fetchPresets(): Promise<Record<string, number[]>> {
+  const res = await fetch(`${API_BASE}/presets`);
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.json() as Promise<Record<string, number[]>>;
+}
+
 export async function generatePiece(latent: number[]): Promise<string> {
   const res = await fetch(`${API_BASE}/generate`, {
     method: "POST",
