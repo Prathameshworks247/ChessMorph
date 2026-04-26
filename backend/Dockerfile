@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
 COPY decoder.onnx ./decoder.onnx
+COPY presets.json ./presets.json
 
 ENV MODEL_PATH=/app/decoder.onnx
 ENV PYTHONUNBUFFERED=1
