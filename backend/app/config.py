@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+_FALLBACK_CORS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 def _default_model_path() -> Path:
@@ -16,20 +18,23 @@ def _default_model_path() -> Path:
     return _BACKEND_DIR.parent / "ml" / "exports" / "decoder.onnx"
 
 
-def _default_cors() -> list[str]:
-    raw = os.environ.get("CORS_ORIGINS", "")
-    if raw:
-        return [o.strip() for o in raw.split(",") if o.strip()]
-    return ["http://localhost:3000", "http://127.0.0.1:3000"]
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     MODEL_PATH: Path = _default_model_path()
     LATENT_DIM: int = 16
     IMAGE_SIZE: int = 64
-    CORS_ORIGINS: list[str] = _default_cors()
+    CORS_ORIGINS: list[str] = _FALLBACK_CORS
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors(cls, v: object) -> list[str]:
+        if isinstance(v, str):
+            stripped = v.strip()
+            if not stripped:
+                return _FALLBACK_CORS
+            return [o.strip() for o in stripped.split(",") if o.strip()]
+        return v  # already a list (e.g. from default or JSON env var)
 
 
 settings = Settings()
