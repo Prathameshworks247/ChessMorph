@@ -6,7 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
-COPY ../ml/exports/decoder.onnx ./decoder.onnx
+COPY decoder.onnx ./decoder.onnx
 
 ENV MODEL_PATH=/app/decoder.onnx
 ENV PYTHONUNBUFFERED=1

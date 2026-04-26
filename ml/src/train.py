@@ -29,9 +29,20 @@ def beta_schedule(epoch: int, warmup: int, ramp: int, beta_target: float) -> flo
     return beta_target
 
 
-def save_checkpoint(model: GameAssetVAE, path: Path, meta: dict) -> None:
+def save_checkpoint(
+    model: GameAssetVAE,
+    path: Path,
+    meta: dict,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler=None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"model_state": model.state_dict(), **meta}, path)
+    payload = {"model_state": model.state_dict(), **meta}
+    if optimizer is not None:
+        payload["optimizer_state"] = optimizer.state_dict()
+    if scheduler is not None:
+        payload["scheduler_state"] = scheduler.state_dict()
+    torch.save(payload, path)
     log.info("Saved checkpoint %s", path)
 
 
@@ -83,8 +94,22 @@ def train(config_path: Path | None = None) -> None:
     ckpt_dir = ml_root / cfg["paths"]["checkpoints"]
     best_val = float("inf")
     epochs_no_improve = 0
+    start_epoch = 1
 
-    for epoch in range(1, tc["epochs"] + 1):
+    resume_path = ckpt_dir / "best.pt"
+    if resume_path.exists():
+        ckpt = torch.load(resume_path, map_location=device)
+        model.load_state_dict(ckpt["model_state"])
+        if "optimizer_state" in ckpt:
+            optimizer.load_state_dict(ckpt["optimizer_state"])
+        if "scheduler_state" in ckpt:
+            scheduler.load_state_dict(ckpt["scheduler_state"])
+        best_val = ckpt.get("val_loss", float("inf"))
+        start_epoch = ckpt.get("epoch", 0) + 1
+        epochs_no_improve = ckpt.get("epochs_no_improve", 0)
+        log.info("Resumed from %s (epoch %d, val_recon=%.4f)", resume_path, start_epoch - 1, best_val)
+
+    for epoch in range(start_epoch, tc["epochs"] + 1):
         beta = beta_schedule(
             epoch - 1,
             tc["beta_warmup_epochs"],
@@ -158,7 +183,7 @@ def train(config_path: Path | None = None) -> None:
 
         # Checkpoints
         if epoch % tc["save_checkpoint_every_n_epochs"] == 0:
-            save_checkpoint(model, ckpt_dir / f"epoch_{epoch}.pt", {"epoch": epoch})
+            save_checkpoint(model, ckpt_dir / f"epoch_{epoch}.pt", {"epoch": epoch}, optimizer, scheduler)
 
         # Track best using recon loss only — total loss rises when beta ramps,
         # which would falsely trigger early stopping during the warmup phase.
@@ -166,7 +191,11 @@ def train(config_path: Path | None = None) -> None:
         if monitor < best_val:
             best_val = monitor
             epochs_no_improve = 0
-            save_checkpoint(model, ckpt_dir / "best.pt", {"epoch": epoch, "val_loss": best_val})
+            save_checkpoint(
+                model, ckpt_dir / "best.pt",
+                {"epoch": epoch, "val_loss": best_val, "epochs_no_improve": 0},
+                optimizer, scheduler,
+            )
         else:
             epochs_no_improve += 1
             # Only allow early stopping after beta has fully ramped
