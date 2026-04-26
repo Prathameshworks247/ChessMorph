@@ -1,6 +1,6 @@
 # ChessMorph
 
-**Live demo → [chess-morph-vae.vercel.app](https://chess-morph-vae.vercel.app)**
+**Live link → [chess-morph-vae.vercel.app](https://chess-morph-vae.vercel.app)**
 
 A Beta-VAE trained on chess piece silhouettes. Move 16 sliders to morph piece shapes continuously through a learned latent space — or interpolate between any two pieces to animate a smooth transition.
 
