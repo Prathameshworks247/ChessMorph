@@ -19,7 +19,11 @@ def _default_model_path() -> Path:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_ignore_empty=True,
+    )
 
     MODEL_PATH: Path = _default_model_path()
     LATENT_DIM: int = 16
