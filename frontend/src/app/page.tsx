@@ -21,6 +21,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("gold");
   const [presets, setPresets] = useState<Record<string, number[]>>({});
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Animation state
   const [savedA, setSavedA] = useState<number[] | null>(null);
@@ -45,6 +46,7 @@ export default function Home() {
       try {
         const src = await generatePiece(vec);
         setImageSrc(src);
+        setHasLoaded(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
       } finally {
@@ -156,6 +158,16 @@ export default function Home() {
           <p className="text-xs text-gray-500">
             {animating ? "Morphing…" : loading ? "Generating…" : "64 × 64 silhouette from VAE decoder"}
           </p>
+          {!hasLoaded && (
+            <div className="flex items-start gap-2 max-w-[16rem] rounded-lg border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-amber-300/90">
+              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 1 1 0 1.5A.75.75 0 0 1 8 4Zm-.25 3h1.5v4.5h-1.5V7Z" />
+              </svg>
+              <p className="text-[11px] leading-snug">
+                First request may take <span className="font-semibold">1–2 minutes</span> — the backend wakes up from sleep on your first visit.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </main>
