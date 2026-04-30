@@ -23,7 +23,6 @@ export default function Home() {
   const [presets, setPresets] = useState<Record<string, number[]>>({});
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  // Animation state
   const [savedA, setSavedA] = useState<number[] | null>(null);
   const [savedB, setSavedB] = useState<number[] | null>(null);
   const [animating, setAnimating] = useState(false);
@@ -32,11 +31,10 @@ export default function Home() {
   const animTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const animIdx = useRef(0);
 
-  // Load presets on mount
   useEffect(() => {
     fetchPresets()
       .then(setPresets)
-      .catch(() => {}); // silently skip if backend not ready
+      .catch(() => {});
   }, []);
 
   const fetchImage = useCallback(
@@ -68,7 +66,6 @@ export default function Home() {
     });
   };
 
-  // Animation logic
   const stopAnimation = useCallback(() => {
     if (animTimer.current) {
       clearInterval(animTimer.current);
@@ -84,7 +81,6 @@ export default function Home() {
     setError(null);
     try {
       const frames = await interpolatePieces(savedA, savedB, ANIMATE_FRAMES);
-      // Also reverse so it loops A→B→A
       const loop = [...frames, ...[...frames].reverse()];
       animFrames.current = loop;
       animIdx.current = 0;
@@ -95,7 +91,6 @@ export default function Home() {
         animIdx.current = (animIdx.current + 1) % loop.length;
         const i = animIdx.current;
         setImageSrc(loop[i]);
-        // Show 1-based frame within the forward pass only
         const display = (i % ANIMATE_FRAMES) + 1;
         setFrameLabel(`${display}/${ANIMATE_FRAMES}`);
       }, FRAME_MS);
@@ -105,48 +100,78 @@ export default function Home() {
     }
   }, [savedA, savedB]);
 
-  // Cleanup on unmount
   useEffect(() => () => stopAnimation(), [stopAnimation]);
 
-  const handleRandomize = () => {
-    stopAnimation();
-    setLatent(sampleRandom(LATENT_DIM));
-  };
-  const handleReset = () => {
-    stopAnimation();
-    setLatent(Array(LATENT_DIM).fill(0));
-  };
-  const handlePreset = (lat: number[]) => {
-    stopAnimation();
-    setLatent(lat);
-  };
+  const handleRandomize = () => { stopAnimation(); setLatent(sampleRandom(LATENT_DIM)); };
+  const handleReset = () => { stopAnimation(); setLatent(Array(LATENT_DIM).fill(0)); };
+  const handlePreset = (lat: number[]) => { stopAnimation(); setLatent(lat); };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8 gap-8">
-      <h1 className="text-3xl font-bold tracking-tight">
-        Chess<span className="text-indigo-400">Morph</span>
-      </h1>
+    <main className="relative min-h-screen flex flex-col items-center justify-start pt-10 pb-16 px-6 gap-10 overflow-hidden">
 
-      <PresetBar presets={presets} onSelect={handlePreset} disabled={animating} />
+      {/* Dot grid background layer */}
+      <div className="dot-grid fixed inset-0 pointer-events-none opacity-40" />
 
-      <div className="flex flex-col lg:flex-row gap-10 items-start justify-center w-full max-w-4xl">
-        <div className="flex flex-col gap-5 w-full max-w-sm">
+      {/* ── Header ─────────────────────────────────────────── */}
+      <header className="flex flex-col items-center gap-2 z-10">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl leading-none select-none">♟</span>
+          <h1 className="text-4xl font-bold tracking-tight">
+            <span className="text-white">Chess</span>
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: "linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c4b5fd 100%)",
+              }}
+            >
+              Morph
+            </span>
+          </h1>
+        </div>
+        <p className="text-sm text-slate-400 font-light tracking-wide">
+          Beta-VAE latent space explorer &mdash; 16 dimensions, real-time inference
+        </p>
+      </header>
+
+      {/* ── Preset bar ─────────────────────────────────────── */}
+      <div className="z-10">
+        <PresetBar presets={presets} onSelect={handlePreset} disabled={animating} />
+      </div>
+
+      {/* ── Main two-column layout ──────────────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start justify-center w-full max-w-5xl z-10">
+
+        {/* Left: Sliders + Controls */}
+        <div className="glass rounded-2xl p-5 flex flex-col gap-5 w-full max-w-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+              Latent Dimensions
+            </span>
+            <span className="font-mono text-[10px] text-slate-600">16-dim β-VAE</span>
+          </div>
           <SliderPanel values={latent} onChange={handleSliderChange} disabled={animating} />
-          <ControlBar
-            onRandomize={handleRandomize}
-            onReset={handleReset}
-            onSaveA={() => setSavedA([...latent])}
-            onSaveB={() => setSavedB([...latent])}
-            onAnimate={startAnimation}
-            onStop={stopAnimation}
-            hasSavedA={savedA !== null}
-            hasSavedB={savedB !== null}
-            animating={animating}
-          />
-          {error && <p className="text-red-400 text-xs">Error: {error}</p>}
+          <div className="border-t border-white/5 pt-4">
+            <ControlBar
+              onRandomize={handleRandomize}
+              onReset={handleReset}
+              onSaveA={() => setSavedA([...latent])}
+              onSaveB={() => setSavedB([...latent])}
+              onAnimate={startAnimation}
+              onStop={stopAnimation}
+              hasSavedA={savedA !== null}
+              hasSavedB={savedB !== null}
+              animating={animating}
+            />
+          </div>
+          {error && (
+            <p className="text-red-400 text-xs bg-red-950/40 border border-red-800/40 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
         </div>
 
-        <div className="flex flex-col items-center gap-4">
+        {/* Right: Piece + Theme + Status */}
+        <div className="flex flex-col items-center gap-5">
           <PieceDisplay
             src={imageSrc}
             loading={loading}
@@ -154,17 +179,26 @@ export default function Home() {
             theme={theme}
             frame={frameLabel}
           />
+
           <ThemeSelector current={theme} onChange={setTheme} />
-          <p className="text-xs text-gray-500">
-            {animating ? "Morphing…" : loading ? "Generating…" : "64 × 64 silhouette from VAE decoder"}
+
+          <p className="text-xs text-slate-600 font-mono tracking-wide">
+            {animating
+              ? "▶ morphing…"
+              : loading
+              ? "⟳ decoding…"
+              : "64 × 64 · VAE decoder · ONNX Runtime"}
           </p>
+
           {!hasLoaded && (
-            <div className="flex items-start gap-2 max-w-[16rem] rounded-lg border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-amber-300/90">
-              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
+            <div className="flex items-start gap-2.5 max-w-[17rem] rounded-xl border border-amber-700/40 bg-amber-950/30 px-4 py-3 text-amber-300/80">
+              <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-80" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 1 1 0 1.5A.75.75 0 0 1 8 4Zm-.25 3h1.5v4.5h-1.5V7Z" />
               </svg>
               <p className="text-[11px] leading-snug">
-                First request may take <span className="font-semibold">1–2 minutes</span> — the backend wakes up from sleep on your first visit.
+                First request may take{" "}
+                <span className="font-semibold text-amber-200">1–2 minutes</span>
+                {" "}— backend wakes from sleep on first visit.
               </p>
             </div>
           )}
